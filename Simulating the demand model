@@ -1,0 +1,39 @@
+#Simulating the demand model#
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+#Set the parameters#
+alpha=10; eta=2; beta1=0.1; beta2=0.2
+#Set the number of observations#
+N=120
+#fix the data of this model#
+np.random.seed(3)
+#generate the price#
+p=10+np.random.random(N)
+#A cheaper competing product#
+p1=0.95*p+np.random.random(N)
+#Cross-sectional effect#
+x1=0.5*(p-10)+np.random.binomial(1,0.3,120)
+#All statistical models need noise#
+#Control the noise-signal ratio#
+noise=0.1*np.random.random(N)
+#Finally generate the data#
+Q=np.exp(alpha-eta*np.log(p)+beta1*np.log(p1)
+        +beta2*x1+noise)
+#Import the new packages#
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+#Regression data process#
+y=np.log(Q).reshape(-1,1)
+x=np.zeros((120,3))
+x[:,0]=np.log(p)
+x[:,1]=np.log(p1)
+x[:,2]=x1
+Y=pd.DataFrame(y)
+X=pd.DataFrame(sm.add_constant(x))
+X.columns=['const','log_p','log_p1','Cross']
+Y.columns=['log_Q']
+results_0=sm.OLS(X,Y).fit()
+print(results_0)
+#No result is print but no wrong#
