@@ -35,5 +35,4 @@ X=pd.DataFrame(sm.add_constant(x))
 X.columns=['const','log_p','log_p1','Cross']
 Y.columns=['log_Q']
 results_0=sm.OLS(X,Y).fit()
-print(results_0)
-#No result is print but no wrong#
+print(results_0.summary())
