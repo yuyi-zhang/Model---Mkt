@@ -1,0 +1,122 @@
+#import packages#
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+#read the data#
+car_choice = pd.read_csv('car.choice.csv') 
+print(car_choice.describe())
+
+X = car_choice[['seat','cargo','price']] 
+X.columns = ['seat','cargo','price']
+y = car_choice['choice']
+
+#Estimation using the glm function
+logit_car = sm.GLM(y,X,family=sm.families.Binomial()).fit() 
+print(logit_car.summary())
+
+X = car_choice[['seat','cargo','price']]
+X.columns = ['seat','cargo','price']
+y = car_choice['choice']
+
+#Estimation using the glm function
+logit_car = sm.GLM(y,X,family=sm.families.Binomial()).fit()
+
+#Calculate exact probability to present marginal effect 
+#Take price-variable as an example
+### Unconditional probability
+X1_low,X1_medium,X1_high = np.mean(X),np.mean(X),np.mean(X) 
+X1_low['price'],X1_medium['price'],X1_high['price'] =30,35,40 
+pred_low1 = logit_car.predict(X1_low.values)
+pred_medium1 = logit_car.predict(X1_medium.values) 
+pred_high1 = logit_car.predict(X1_high.values) 
+uncon_data = pd.DataFrame({"price":[30,35,45],"prob":[pred_low1,pred_medium1,pred_high1]})
+
+#barplot##########改了 这个更好
+uncon_data.plot.bar()
+plt.xticks(range(0, 3),['price30','price35','price45'])
+plt.xlabel('price')
+plt.ylabel('unconditional_predicted_probability')
+
+#difference between different prices
+print(pred_medium1-pred_low1, pred_high1-pred_medium1)
+
+# Conditional probability
+X2_low = np.mean(X[X['price']==30]) 
+X2_low['price'] = 30
+X2_medium = np.mean(X[X['price']==35]) 
+X2_medium['price'] = 35
+X2_high = np.mean(X[X['price']==40]) 
+X2_high['price'] = 40
+pred_low2 = logit_car.predict(X2_low.values) 
+pred_medium2 = logit_car.predict(X2_medium.values) 
+pred_high2 = logit_car.predict(X2_high.values) 
+con_data = pd.DataFrame({"price":[30,35,45],"prob":[pred_low2,pred_medium2,pred_high2]})
+
+#barplot##########改了 这个更好
+con_data.plot.bar()
+plt.xticks(range(0, 3),['price30','price35','price45'])
+plt.xlabel('price')
+plt.ylabel('conditional_predicted_probability')
+
+#difference between different prices
+print(pred_medium2-pred_low2,pred_high2-pred_medium2)
+ 
+#import packages#
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import collections
+
+#read the data#
+cbc = pd.read_csv('cbc.csv') 
+print(cbc.describe())
+
+#Counter function counts the number of data each type
+c = cbc[cbc['choice']==1] 
+C=collections.Counter(c['price']) 
+print(C)
+
+# create new data columns based on categories
+seat_7,seat_8,cargo3ft,enggas,enghyb = [],[],[],[],[]
+price35,price40 = [],[]
+for i in range(cbc.shape[0]):
+    seat_7.append(1 if cbc.iloc[i,4] == 7 else 0)
+    seat_8.append(1 if cbc.iloc[i,4] == 8 else 0) 
+    cargo3ft.append(1 if cbc.iloc[i,5] =='3ft' else 0)
+    enggas.append(1 if cbc.iloc[i,6] == 'gas' else 0)
+    enghyb.append(1 if cbc.iloc[i,6] == 'hyb' else 0)
+    price35.append(1 if cbc.iloc[i,7] == 35 else 0)
+    price40.append(1 if cbc.iloc[i,7] == 40 else 0)
+    
+x1 = pd.DataFrame({'seat7':seat_7,'seat8':seat_8, 'cargo3ft':cargo3ft,'enggas':enggas,'enghy':enghyb,'price35':price35,'price40':price40})
+y = cbc['choice']
+print(x1,y)
+
+#Estimate a model with an intercept
+x2 = sm.add_constant(x1)
+logit2 = sm.GLM(y,x2,family=sm.families.Binomial()).fit()
+print(logit2.summary())
+ 
+#Include price as a numeric variable
+#Drop the  predictors
+x3 = x1.drop(['price35','price40'],axis=1) 
+x3 = pd.concat([x3,cbc['price']],axis=1)
+x4 = sm.add_constant(x3)
+logit3 = sm.MNLogit(y,x4).fit() 
+print(logit3.summary())
+ 
+# customers are willing to pay for gas engine
+print(1.4347/0.1591*1000)
+ 
+#customers are willing to pay for 3ft cargo
+print(0.4385/0.1591*1000)
+
+ 
+
+
+
+
+
