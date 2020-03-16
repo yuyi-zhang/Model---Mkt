@@ -1,0 +1,237 @@
+import pandas as pd
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+#Sparse Signal DGP
+
+N_true_inputs = 2 #Number of true inputs
+N_false_inputs = 8 #Number of false inputs
+n_obs = 100 #Nubmer of observations:Estimation
+n_pred = 100 #Nubmer of observations:Prediction
+error_sd = 0.5 #Standar deviation of the error term
+
+# Total number of inputs (simply set intercept = 0)
+p = N_true_inputs + N_false_inputs
+
+# Total number of observations
+n = n_obs + n_pred
+
+ 
+
+#Parameter vector:
+#True inputs have coefficient 1
+#False inputs have a zero (or very small) coefficient
+beta = np.mat(np.zeros((p,1)))
+beta[0:N_true_inputs,:] = 1
+
+#Simulate the data: Note that X is a matrix, not a data frame
+np.random.seed(1)
+X = np.matrix(np.random.rand(n,p))
+epsilon = np.matrix(error_sd*np.random.normal(0,size=(n,1)))
+
+y = X*beta + epsilon
+
+ 
+
+# Pack the data into a dataframe
+DF = pd.concat([pd.DataFrame(X),pd.DataFrame(y)],axis=1)
+new_names_true = ['x_true_'+str(i) for i
+in range(1,N_true_inputs+1)]
+new_names_false = ['x_false_'+str(i) for i
+in range(1,N_false_inputs+1)]
+names = new_names_true + new_names_false + ['y']
+DF.columns = names
+
+X = pd.DataFrame(X)
+y = pd.DataFrame(y)
+
+ 
+
+np.random.seed(1)
+# Randomly draw n_obs observations
+train_index = random.sample(range(0,n),n_obs)
+train_index.sort()
+
+DF_estimation = DF.loc[train_index,:]
+DF_prediction = DF.drop(index=train_index)
+
+ 
+
+#Linear Regression using OLS
+
+fit_OLS = sm.OLS(DF_estimation['y'],
+DF_estimation.iloc[:,0:p]).fit()
+summary_OLS = fit_OLS.summary()
+
+# Collect the results
+results = pd.concat([fit_OLS.params,fit_OLS.pvalues],axis=1)
+
+plt.scatter(range(0,p),fit_OLS.params)
+plt.axhline(y=1, c="b", ls="-", lw=2)
+plt.axhline(y=0, c="g", ls="-", lw=2)
+plt.title('beta_hat')
+plt.show()
+
+ 
+
+plt.scatter(range(0,p),fit_OLS.pvalues)
+plt.axhline(y=0.05, c="g", ls="-", lw=2)
+plt.title('p-value')
+plt.show()
+
+ 
+
+#Out-of-sample prediction
+
+y_pred = DF_prediction['y']
+pred_y_OLS = fit_OLS.predict(DF_prediction.iloc[:,0:p])
+mse_OLS = np.mean((y_pred - pred_y_OLS)**2)
+print(mse_OLS)
+
+ 
+
+#OOS of the oracle model
+
+fit_oracle = sm.OLS(DF_estimation['y'],\
+DF_estimation[['x_true_1','x_true_2']]).fit()
+pred_y_oracle = fit_oracle.predict(DF_prediction.iloc[:,
+0:N_true_inputs])
+mse_oracle = np.mean((y_pred - pred_y_oracle)**2)
+print(mse_oracle)
+
+ 
+
+#Best Subset Selection
+
+import itertools
+def processSubset(X,y,feature_set):
+# Fit model on feature_set and calculate rsq_adj
+regr = sm.OLS(y,X[list(feature_set)]).fit()
+rsq_adj = regr.rsquared_adj
+return {"model":regr, "rsq_adj":rsq_adj}
+
+ 
+
+def getBest(X,y,k):
+results = [] #fill results in a list
+#get X variable's all combinations
+for combo in itertools.combinations(X.columns, k):
+results.append(processSubset(X,y,combo))
+# Wrap everything up in a nice dataframe
+models = pd.DataFrame(results)
+# Choose the model with the highest rsq_adj
+best_model = models.loc[models['rsq_adj'].idxmax()]
+#Return the best model
+return best_model
+
+ 
+
+# find the best model with 5 regressors
+print(getBest(X,y,5).model.summary())
+
+ 
+
+# Now we have one big DataFrame that contains the best models
+# we've generated along with their rsq_adj:
+models_best = pd.DataFrame(columns=["model", "rsq_adj"])
+##### Here we can DECIDE the max variable number
+for i in range(1,11):
+models_best.loc[i] = getBest(X,y,i).values
+# get summary of the best 1-variable model
+print(models_best.loc[1,'model'].summary())
+
+ 
+
+# Now we have one big DataFrame that contains the best models
+# we've generated along with their rsq_adj:
+models_best = pd.DataFrame(columns=["model", "rsq_adj"])
+##### Here we can DECIDE the max variable number
+for i in range(1,11):
+models_best.loc[i] = getBest(X,y,i).values
+# get summary of the best 1-variable model
+print(models_best.loc[1,'model'].summary())
+
+ 
+
+# Gets the second element from each row ('model')
+# and pulls out its rsquared attribute
+models_best.apply(lambda row: row["model"].rsquared, axis=1)
+
+ 
+
+#Validation
+
+#get the estimation and prediction data
+X_est,y_est = DF_estimation.iloc[:,0:p],DF_estimation['y']
+X_pred,y_pred = DF_prediction.iloc[:,0:p],DF_prediction['y']
+
+ 
+
+# Choosing Among Models
+def best(X_train,y_train,X_test,y_test,mav):
+index_list = []
+coefi = {}
+prediction = []
+val_errors=[]
+models_best = pd.DataFrame(columns=["model", "rsq_adj"])
+#Here decide the MAX number of predictors
+for i in range(1,mav+1):
+models_best.loc[i] = getBest(X_train,y_train,i).values
+mod = models_best.loc[i,'model']
+index = list(mod.params.index)
+index_list.append(index)
+coefi[str(i)+'_variable_model'] = mod.params
+# select the selected model's required variable from X_prediction
+pred = mod.predict(X_test[index])
+prediction.append(pred)
+val_errors.append(np.mean((y_test-pred)**2))
+k_val = np.array(val_errors).argmin()+1 # find the best model
+return index_list, coefi, prediction, val_errors
+
+ 
+
+#Find the best model,and show the validation errors
+mav = 10
+best_mod = best(X_est,y_est,X_pred,y_pred,mav)
+#The 3rd return value of best() is val_errors
+models_mse = best_mod[3]
+
+ 
+
+plt.figure(figsize=(3,2))
+plt.plot(range(1,mav+1),models_mse,'gs-')
+plt.xlabel('number of variables')
+plt.ylabel('val_errors')
+plt.show()
+
+ 
+
+#Cross-Validation(The other direction)
+
+best_mod2 = best(X_pred,y_pred,X_est,y_est,mav)
+models_mse2 = best_mod2[3]
+
+ 
+
+plt.figure(figsize=(3,2))
+plt.plot(range(1,mav+1),models_mse2,'gs-')
+plt.xlabel('number of variables')
+plt.ylabel('val_errors')
+plt.show()
+
+ 
+
+#2-fold Cross-Validation
+
+mse_cv = np.array(models_mse) + np.array(models_mse2)
+print(mse_cv)
+
+ 
+
+plt.figure(figsize=(3,2))
+plt.plot(range(1,mav+1),mse_cv,'gs-')
+plt.xlabel('number of variables')
+plt.ylabel('cv_val_errors')
+plt.show()
