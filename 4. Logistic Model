@@ -1,0 +1,113 @@
+#import packages#
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+#read the data#
+Dating_DF = pd.read_csv('Online-Dating.csv')
+choices_women_DF= Dating_DF.loc[Dating_DF["profile_gender"] == "female"]
+
+# x is selected women's data without y
+x_w = sm.add_constant(choices_women_DF.drop(['profile_gender','first_contact'], axis=1))
+y_w = choices_women_DF.loc[:,["first_contact"]]
+logit_women = sm.GLM(y_w,x_w,family=sm.families.Binomial()).fit()
+print(logit_women.summary())
+
+#First-contact choices of men#
+choices_men_DF = Dating_DF.loc[Dating_DF["profile_gender"] == "male"]
+x_m = sm.add_constant(choices_men_DF.drop(['profile_gender','first_contact'],axis=1))
+y_m = choices_men_DF.loc[:,["first_contact"]]
+logit_men = sm.GLM(y_m,x_m,family=sm.families.Binomial()).fit()
+print(logit_men.summary())
+
+# New logistic model to estimate part of the variables
+# Logistic regression using 3 variables
+x = pd.concat([choices_men_DF.loc[:,["age"]],choices_men_DF.loc[:,["looks"]],choices_men_DF.loc[:,["yrs_education"]]],axis=1)
+y = choices_men_DF.loc[:,["first_contact"]]
+logit_choices_men=sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(logit_choices_men.summary()) 
+
+###Calculate exact probability to present marginal effect###
+#unconditional probability
+#set looks-variable with 25,35,45 & #other variables with unconditional average
+x1_low = np.mean(x)
+x1_low['age'] = 25
+x1_medium = np.mean(x)
+x1_medium['age'] = 35
+x1_high = np.mean(x)
+x1_high['age'] = 45
+
+#predict using NEW logistic models
+pred_low1 = logit_choices_men.predict(x1_low.values) 
+pred_medium1 = logit_choices_men.predict(x1_medium.values) 
+pred_high1 = logit_choices_men.predict(x1_high.values)
+
+#predicted unconditional probabilities
+uncon_data = pd.DataFrame({'age':[25,35,45],"prob":[pred_low1,pred_medium1,pred_high1]})
+print(uncon_data)
+
+#barplot #######这个地方有bug 此处已经修正 报错显示没有最近本的变量x 而且没有必要写的像slice一样麻烦
+uncon_data.plot.bar()
+plt.xticks(range(0, 3),['age25','age35','age45'])
+plt.xlabel('age')
+plt.ylabel('unconditional_predicted_probability')
+
+#difference between different ages
+print(pred_medium1-pred_low1, pred_high1-pred_medium1)
+
+#conditional probability
+#set looks-variable with 25,35,45
+#other variables with conditional average
+x2 = np.mean(x)
+x2_low = np.mean(x[(x['age']>=21) & (x['age']<=30)]) 
+x2_low['age'] = 25
+x2_medium = np.mean(x[(x['age']>=31) & (x['age']<=40)]) 
+x2_medium['age'] = 35
+x2_high = np.mean(x[(x['age']>=41) & (x['age']<=50)]) 
+x2_high['age'] = 45
+
+#predict using NEW logistic models
+pred_low2 = logit_choices_men.predict(x2_low.values) 
+pred_medium2 = logit_choices_men.predict(x2_medium.values) 
+pred_high2 = logit_choices_men.predict(x2_high.values)
+
+#predicted conditional probabilities
+con_data = pd.DataFrame({"age":[25,35,45],"prob":[pred_low2,pred_medium2,pred_high2]})
+print(uncon_data)
+ 
+#barplot############这个地方有bug 此处已经修正 缺乏最基本的x
+con_data.plot.bar()
+plt.xticks(range(0, 3),['age25','age35','age45'])
+plt.xlabel('age')
+plt.ylabel('conditional_predicted_probability')
+
+#difference between different ages
+print(pred_medium2-pred_low2,pred_high2-pred_medium2)
+
+#Same data with NEW logistic model
+ols_choices_men = sm.OLS(y,x).fit()
+
+#Using ols model to predict
+pred_low3 = ols_choices_men.predict(x1_low.values) 
+pred_medium3 = ols_choices_men.predict(x1_medium.values) 
+pred_high3 = ols_choices_men.predict(x1_high.values)
+uncon_ols = pd.DataFrame({"age":[25,35,45],"prob":[pred_low3,pred_medium3,pred_high3]})
+print("uncon_ols",uncon_ols)
+
+#difference between different ages
+print(pred_medium3-pred_low3, pred_high3-pred_medium3)
+
+#Using ols model to predict
+pred_low4 = ols_choices_men.predict(x2_low.values) 
+pred_medium4 = ols_choices_men.predict(x2_medium.values) 
+pred_high4 = ols_choices_men.predict(x2_high.values)
+
+#predicted conditional probabilities
+con_ols = pd.DataFrame({"age":[25,35,45],"prob":[pred_low4,pred_medium4,pred_high4]})
+print(con_ols)
+
+#difference between different ages
+print(pred_medium4-pred_low4, pred_high4-pred_medium4)
+ 
+
