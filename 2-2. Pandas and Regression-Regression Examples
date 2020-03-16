@@ -1,0 +1,340 @@
+#import packages#
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+#read data#
+data= pd.read_csv('monthly_return.csv')
+
+#fit the model#
+x=sm.add_constant(data['Mkt'])
+AMZN_result=sm.OLS(data['AMZN'],x).fit()
+MSFT_result=sm.OLS(data['MSFT'],x).fit()
+
+#print the results#
+print(AMZN_result.summary())
+print(MSFT_result.summary())
+
+# Return the t-statistic for a given parameter estimate.
+AMZN_results.tvalues
+# The two-tailed p values for the t-stats of the params.
+AMZN_results.pvalues
+# Sum of squared (whitened) residuals.
+AMZN_results.ssr
+# Mean squared error the model.
+AMZN_results.mse_model
+# R-squared of the model.
+AMZN_results.rsquared
+# The predicted values for the original (unwhitened) design
+AMZN_results.fittedvalues
+ 
+#Visualing regression outcome#
+#set the figure size#
+size=plt.subplots(figsize=(8,7))
+#plot AMZN outcome#
+plt.subplot(2,1,1)
+plt.scatter(data['Mkt'],data['AMZN'],label='AMZN')
+plt.plot(data['Mkt'],AMZN_result.fittedvalues,c='r',linestyle='-',label='OLS')
+plt.grid(True, which='both')
+plt.legend(loc='best')
+plt.xlabel('market_rf')
+plt.ylabel('AMZN_return')
+plt.ylim((-0.4,0.6))
+plt.title('Example: Simple Regression')
+
+#plot MSFT outcome#
+plt.subplot(2,1,2)
+plt.scatter(data['Mkt'],data['MSFT'],label='MSFT')
+plt.plot(data['Mkt'],MSFT_result.fittedvalues,c='r',linestyle='-',label='OLS')
+plt.grid(True, which='both')
+plt.legend(loc='best')
+plt.xlabel('market_rf')
+plt.ylabel('MSFT_return')
+plt.ylim((-0.4,0.6))
+plt.subplots_adjust(top=None,bottom=None)
+plt.show()
+
+#AMZN#
+#calaulate the residual and outliers#
+AMZN_residual=AMZN_result.resid
+# results.resid is array, need to be transformed to dataframe
+AMZN_residual=AMZN_residual.to_frame()
+#rename the column#
+AMZN_residual.columns=['resid']
+#add date to the frame#
+AMZN_residual[['date','AMZN']]=data[['date','AMZN']]
+#get the sigma#
+AMZN_sigma=AMZN_result.resid.std()
+
+#print the outlier#
+print('outlier of AMZN_residual:\n',
+      AMZN_residual[(AMZN_residual['resid']<-3*AMZN_sigma)
+                   |(AMZN_residual['resid']>3*AMZN_sigma)]
+     [['date','AMZN']])
+     
+#MSFT#
+MSFT_residual=MSFT_result.resid
+MSFT_residual=MSFT_residual.to_frame()
+MSFT_residual.columns=['resid']
+MSFT_residual[['date','MSFT']]=data[['date','MSFT']]
+MSFT_sigma=MSFT_result.resid.std()
+print('outlier of MSFT_residual:\n',
+      MSFT_residual[(MSFT_residual['resid']<-2*MSFT_sigma)
+                   |(MSFT_residual['resid']>2*MSFT_sigma)]
+     [['date','MSFT']])
+print('outlier of MSFT_residual:\n',
+      MSFT_residual[(MSFT_residual['resid']<-3*MSFT_sigma)
+                   |(MSFT_residual['resid']>3*MSFT_sigma)]
+     [['date','MSFT']])
+     
+#draw the picture#
+#AMZN#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,1)
+plt.hist(x=AMZN_result.resid)
+plt.xlabel('AMZN_residual')
+plt.ylabel('Frequency')
+plt.vlines(x=[-2*AMZN_sigma,2*AMZN_sigma],
+           ymax=50,ymin=0,color='red',linestyles='--',
+          label='2*sigma')
+plt.vlines(x=[-3*AMZN_sigma,3*AMZN_sigma],
+           ymax=50,ymin=0,color='orange',linestyles='--',
+          label='3*sigma')
+plt.legend(loc='best')
+plt.title('Example: Residual Diagnostics')
+#MSFT#
+plt.subplot(2,1,2)
+plt.hist(x=MSFT_result.resid)
+plt.xlabel('MSFT_residual')
+plt.ylabel('Frequency')
+plt.vlines(x=[-2*MSFT_sigma,2*MSFT_sigma],
+           ymax=50,ymin=0,color='red',linestyles='--',
+          label='2*sigma')
+plt.vlines(x=[-3*MSFT_sigma,3*MSFT_sigma],
+           ymax=50,ymin=0,color='orange',linestyles='--',
+          label='3*sigma')
+plt.legend(loc='best')
+
+#in sample, 2004-2013#
+data_sample=data[(data['date']<201401)]
+x1=sm.add_constant(data_sample['Mkt'])
+AMZN_result1=sm.OLS(data_sample['AMZN'],x1).fit()
+MSFT_result1=sm.OLS(data_sample['MSFT'],x1).fit()
+#out of sample, 2014-2018#
+data_outsample=data[(data['date']>=201401)]
+x2=sm.add_constant(data_outsample['Mkt'])
+AMZN_result2=sm.OLS(data_outsample['AMZN'],x2).fit()
+MSFT_result2=sm.OLS(data_outsample['MSFT'],x2).fit()
+
+#AMZN#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,1)
+plt.scatter(data_sample['Mkt'],data_sample['AMZN'],label='in sample')
+plt.plot(data_outsample['Mkt'],data_outsample['AMZN'],marker='o',linestyle='',
+        color='orange',label='out of sample')
+plt.plot(data_sample['Mkt'],AMZN_result.fittedvalues,label='OLS in sample',
+         color='red', linestyle='-')
+plt.plot(data_outsample['Mkt'],AMZN_result2.fittedvalues,color='darkgreen',
+         linestyle='-',label='OLS out of sample')
+plt.grid(True, which='both')
+plt.legend(loc='upper right')
+plt.xlabel('market_rf')
+plt.ylabel('AMZN_return')
+plt.ylim((-0.4,0.6))
+plt.title('Example: Out of Sample')
+#MSFT#
+plt.subplot(2,1,2)
+plt.plot(data_sample['Mkt'],data_sample['MSFT'],marker='o',linestyle='',label='in sample')
+plt.plot(data_outsample['Mkt'],data_outsample['MSFT'],marker='o',linestyle='',
+        color='orange',label='out of sample')
+plt.plot(data_sample['Mkt'],MSFT_result.fittedvalues,label='OLS in sample',
+         color='red', linestyle='-')
+plt.plot(data_outsample['Mkt'],MSFT_result2.fittedvalues,color='darkgreen',
+         linestyle='-',label='OLS out of sample')
+plt.grid(True, which='both')
+plt.legend(loc='upper left')
+plt.xlabel('market_rf')
+plt.ylabel('MSFT_return')
+plt.ylim((-0.4,0.6))
+plt.subplots_adjust(top=None,bottom=None)
+
+#multiple regression#
+data['Mkt^2']=data['Mkt']**2
+data['Mkt^3']=data['Mkt']**3
+x=sm.add_constant(data[['Mkt','Mkt^2','Mkt^3']])
+AMZN_result=sm.OLS(data['AMZN'],x).fit()
+MSFT_result=sm.OLS(data['MSFT'],x).fit()
+print(AMZN_result.summary())
+print(MSFT_result.summary())
+
+#draw the pic#
+#generate a sequence of numbers#
+step=(max(x['Mkt'])-min(x['Mkt']))/180
+new_x=pd.DataFrame(np.arange(min(x['Mkt'])-0.01,
+                            max(x['Mkt'])+0.01,step))
+new_x.columns=['x1']
+new_x['x2']=new_x['x1']**2
+new_x['x3']=new_x['x1']**3
+new_x=sm.add_constant(new_x)
+#calculate the coresponding fitted values#
+new_AMZN=AMZN_result.predict(new_x)
+new_MSFT=AMZN_result.predict(new_x)
+
+#plot#
+#AMZN#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,1)
+plt.scatter(data['Mkt'],data['AMZN'],label='AMZN')
+plt.plot(new_x['x1'],new_AMZN,color='red',linestyle='-',label='OLS')
+plt.grid(True, which='both')
+plt.legend(loc='best')
+plt.xlabel('market_rf')
+plt.ylabel('AMZN_return')
+plt.ylim((-0.4,0.6))
+plt.title('Example: Multiple Regression')
+#MSFT#
+plt.subplot(2,1,2)
+plt.scatter(data['Mkt'],data['MSFT'],label='MSFT')
+plt.plot(new_x['x1'],new_MSFT,color='red',linestyle='-',label='OLS')
+plt.grid(True, which='both')
+plt.legend(loc='best')
+plt.xlabel('market_rf')
+plt.ylabel('MSFT_return')
+plt.subplots_adjust(top=None,bottom=None)
+
+#get the residual again#
+#calaulate the residual and outliers#
+AMZN_residual=AMZN_result.resid
+# results.resid is array, need to be transformed to dataframe
+AMZN_residual=AMZN_residual.to_frame()
+#rename the column#
+AMZN_residual.columns=['resid']
+#add date to the frame#
+AMZN_residual[['date','AMZN']]=data[['date','AMZN']]
+#get the sigma#
+AMZN_sigma=AMZN_result.resid.std()
+#print the outlier#
+print('outlier of AMZN_residual:\n',
+      AMZN_residual[(AMZN_residual['resid']<-3*AMZN_sigma)
+                   |(AMZN_residual['resid']>3*AMZN_sigma)]
+     [['date','AMZN']])
+     
+#MSFT#
+MSFT_residual=MSFT_result.resid
+MSFT_residual=MSFT_residual.to_frame()
+MSFT_residual.columns=['resid']
+MSFT_residual[['date','MSFT']]=data[['date','MSFT']]
+MSFT_sigma=MSFT_result.resid.std()
+print('outlier of MSFT_residual:\n',
+      MSFT_residual[(MSFT_residual['resid']<-2*MSFT_sigma)
+                   |(MSFT_residual['resid']>2*MSFT_sigma)]
+     [['date','MSFT']])
+print('outlier of MSFT_residual:\n',
+      MSFT_residual[(MSFT_residual['resid']<-3*MSFT_sigma)
+                   |(MSFT_residual['resid']>3*MSFT_sigma)]
+     [['date','MSFT']])
+
+#Residual diagnostics of multiple regression#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,1)
+plt.hist(x=AMZN_result.resid)
+plt.xlabel('AMZN_residual')
+plt.ylabel('Frequency')
+plt.vlines(x=[-2*AMZN_sigma,2*AMZN_sigma],
+           ymax=50,ymin=0,color='red',linestyles='--',
+          label='2*sigma')
+plt.vlines(x=[-3*AMZN_sigma,3*AMZN_sigma],
+           ymax=50,ymin=0,color='orange',linestyles='--',
+          label='3*sigma')
+plt.legend(loc='best')
+plt.title('Example: Residual Diagnostics')
+plt.subplot(2,1,2)
+plt.hist(x=MSFT_result.resid)
+plt.xlabel('MSFT_residual')
+plt.ylabel('Frequency')
+plt.vlines(x=[-2*MSFT_sigma,2*MSFT_sigma],
+           ymax=50,ymin=0,color='red',linestyles='--',
+          label='2*sigma')
+plt.vlines(x=[-3*MSFT_sigma,3*MSFT_sigma],
+           ymax=40,ymin=0,color='orange',linestyles='--',
+          label='3*sigma')
+plt.legend(loc='best')
+
+#in sample and outsample######## 这个地方有bug 运行不了 我修正了此处的bug 然后下面的是我修改版 旧版本在slices里
+#in sample, 2004-2013#
+#multiple regression again#
+data['Mkt^2']=data['Mkt']**2
+data['Mkt^3']=data['Mkt']**3
+x=sm.add_constant(data[['Mkt','Mkt^2','Mkt^3']])
+AMZN_result=sm.OLS(data['AMZN'],x).fit()
+MSFT_result=sm.OLS(data['MSFT'],x).fit()
+#generate a sequence of numbers again#
+step=(max(x['Mkt'])-min(x['Mkt']))/180
+new_x=pd.DataFrame(np.arange(min(x['Mkt'])-0.01,
+                            max(x['Mkt'])+0.01,step))
+new_x.columns=['x1']
+new_x['x2']=new_x['x1']**2
+new_x['x3']=new_x['x1']**3
+new_x=sm.add_constant(new_x)
+#in the sample#
+Mkt=data['Mkt']
+Mkt_2=Mkt*Mkt
+Mkt_3=Mkt*Mkt*Mkt
+data_sample=data[(data['date']<201401)]
+X = np.column_stack((Mkt,Mkt_2,Mkt_3))
+X = sm.add_constant(X)
+X=X[1:121]
+AMZN_result1=sm.OLS(data_sample['AMZN'],X).fit()
+MSFT_result1=sm.OLS(data_sample['MSFT'],X).fit()
+#use the previous new x#
+new_AMZN=AMZN_result1.predict(new_x)
+new_MSFT=AMZN_result1.predict(new_x)
+#out of sample#
+data_outsample=data[(data['date']>=201401)]
+X2 = np.column_stack((Mkt,Mkt_2,Mkt_3))
+X2 = sm.add_constant(X2)
+X2=X2[120:181]
+AMZN_result2=sm.OLS(data_outsample['AMZN'],X2).fit()
+MSFT_result2=sm.OLS(data_outsample['MSFT'],X2).fit()
+#sequence of numbers#
+y=sm.add_constant(data[['Mkt']])
+step2=(max(y['Mkt'])-min(y['Mkt']))/len(y['Mkt'])
+new_x2=pd.DataFrame(np.arange(min(y['Mkt'])-0.02, max(y['Mkt'])+0.02,step2))
+new_x2.columns=['x1']
+new_x2['x2']=new_x['x1']**2
+new_x2['x3']=new_x['x1']**3
+new_x2=sm.add_constant(new_x2)
+#calculate the coresponding fitted values#
+new_AMZN2=AMZN_result.predict(new_x2)
+new_MSFT2=MSFT_result.predict(new_x2)
+
+#Draw the picture#
+#AMZN#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,1)
+plt.scatter(data_sample['Mkt'], data_sample['AMZN'], label='in sample')
+plt.scatter(data_outsample['Mkt'], data_outsample['AMZN'],color='orange', label='out of sample')
+plt.plot(new_x['x1'], new_AMZN, color='red',linestyle='-', label="OLS in sample")
+plt.plot(new_x2['x1'], new_AMZN2, color='darkviolet',linestyle='-', label="OLS out of sample")
+plt.grid(True, which="both")
+plt.legend(loc='best')
+plt.xlabel('Market-Rf')
+plt.ylabel('AMZN return')
+plt.ylim((-0.4,0.6))
+plt.title('Example: Out of Sample')
+plt.show() 
+
+#MSFT#
+size=plt.subplots(figsize=(8,7))
+plt.subplot(2,1,2)
+plt.scatter(data_sample['Mkt'], data_sample['MSFT'], label='in sample')
+plt.scatter(data_outsample['Mkt'], data_outsample['MSFT'],color='orange', label='out of sample')
+plt.plot(new_x['x1'], new_MSFT, color='red',linestyle='-', label="OLS in sample")
+plt.plot(new_x2['x1'], new_MSFT2, color='darkviolet',linestyle='-', label="OLS out of sample")
+plt.grid(True, which="both")
+plt.legend(loc='best')
+plt.xlabel('Market-Rf')
+plt.ylabel('MSFT return')
+plt.ylim((-0.4,0.6))
+plt.show() 
