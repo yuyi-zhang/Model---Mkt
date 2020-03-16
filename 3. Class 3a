@@ -1,0 +1,142 @@
+#Simulating the demand model#
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+
+#Set the parameters#
+alpha=10; eta=2; beta1=0.1; beta2=0.2
+
+#Set the number of observations#
+N=120
+
+#fix the data of this model#
+np.random.seed(3)
+
+#generate the price#
+p=10+np.random.random(N)
+
+#A cheaper competing product#
+p1=0.95*p+np.random.random(N)
+
+#Cross-sectional effect#
+x1=0.5*(p-10)+np.random.binomial(1,0.3,N)
+
+#All statistical models need noise#
+#Control the noise-signal ratio#
+noise=0.1*np.random.random(N)
+
+#Finally generate the data#
+Q=np.exp(alpha-eta*np.log(p)+beta1*np.log(p1)
+        +beta2*x1+noise)
+
+#Import the new packages#
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+#Regression data process#
+y=np.log(Q).reshape(-1,1)
+x=np.zeros((120,3))
+x[:,0]=np.log(p)
+x[:,1]=np.log(p1)
+x[:,2]=x1
+Y=pd.DataFrame(y)
+X=pd.DataFrame(sm.add_constant(x))
+X.columns=['const','log_p','log_p1','Cross']
+Y.columns=['log_Q']
+results_0=sm.OLS(Y,X).fit()
+print(results_0.summary())
+
+#stimulate K times#
+np.random.seed(3)
+K=100;eta_in=np.zeros(K);
+for k in range (0,K):
+    P=10+np.random.random(N)
+    P1=0.95*P+np.random.random(N)
+    X1=0.5*(P-10)+np.random.binomial(1,0.3,N)
+    noise=0.1*np.random.random(N)
+    Q=np.exp(alpha-eta*np.log(P)+beta1*np.log(P1)+beta2*X1+noise)
+    y=pd.DataFrame(np.log(Q))
+    X=pd.DataFrame({'log_P':np.log(P),'log_P1':np.log(P1),'cross':X1})
+    results=sm.OLS(y,x).fit()
+    lb=results.params[0]-1.96*results.bse[0]
+    ub=results.params[0]+1.96*results.bse[0]
+    eta_in[k]=lb<eta and eta<ub
+    
+#SEE the resulte#
+print(np.mean(eta_in))
+
+#find the slopea and the intercept of the best fit line#
+intercept=results_0.params[0]+results_0.params[2]*np.mean(X['log_P1'])+results_0.params[3]*np.mean(X['cross'])
+slope=results_0.params[1]
+
+#create a list of values in the best fit line#
+fitted_values=[slope*i+intercept for i in X['log_P']]
+
+#plot the best line#
+plt.scatter(X['log_P'],Y['log_Q'])
+plt.plot(X['log_P'],fitted_values)
+plt.title('Actual and Fitted values')
+plt.show()
+
+#the beta_1 estimation#
+print(results_0.params[2])
+
+#if we add 10 noise presictors which are correlated to log Q#
+np.random.seed(1)
+ye=pd.DataFrame(np.random.rand(N,10))
+Z1=[0.5*Y['log_Q']+ye.iloc[:,i]for i in range(0,10)]
+x_1=np.zeros((N,10))
+for i in range(0,10):x_1[:,i]=Z1[i]
+X_1=pd.concat([X,pd.DataFrame(x_1)],axis=1)
+
+#X_1.rename#
+results_1=sm.OLS(Y,X_1).fit()
+print(results_1.params[2])
+
+#if we add 100 noise#
+np.random.seed(1)
+ye=pd.DataFrame(np.random.rand(120,100))
+Z2=[0.5*Y['log_Q']+ye.iloc[:,i]for i in range(0,100)]
+x_2=np.zeros((120,10))
+for i in range(0,10):x_2[:,i]=Z2[i]
+X_2=pd.concat([X,pd.DataFrame(x_2)],axis=1)
+
+#X_2.rename#
+results_2=sm.OLS(Y,X_2).fit()
+print(results_2.params[2])
+
+#Omitted variable bias#
+X_3=pd.concat([X['log_P'],X['log_P1']],axis=1)
+results_3=sm.OLS(Y,X_3).fit()
+print(results_3.summary())              
+
+#the violated assumption#
+df=pd.DataFrame({'residuals':results_3.resid,'X1':X['cross']})
+print(df.corr())
+
+#simulate k times#
+K=1000
+beta1_est=np.zeros(K)
+for K in range(1,K):
+    P=10+np.random.random(N)
+    P1=0.95*P+np.random.random(N)
+    X1=0.5*(P-10)+np.random.binomial(1,0.3,N)
+    noise=0.1*np.random.random(N)
+    Q=np.exp(alpha-eta*np.log(P)+beta1*np.log(P1)+beta2*X1+noise)
+    y=pd.DataFrame(np.log(Q))
+    X=pd.DataFrame({'log_P':np.log(P),'log_P1':np.log(P1),'cross':X1})
+    results=sm.OLS(y,x).fit()
+    beta1_est[K]=results.params[1]
+    
+#plot#
+plt.hist(x=beta1_est)
+plt.axvline(x=np.mean(beta1_est),ls='-',c='green')
+plt.axvline(x=-eta,ls='-',c='red')
+plt.xlabel('beta1_est')
+plt.ylabel('frequency')
+plt.title('histogram of beta1_est')
+plt.show()
+    
+
+
