@@ -11,4 +11,6 @@ Welcome to MS6221!
 
 4 Logistic Moedl.
 
+5 Class5.
+
 6.1 Class 6a.
