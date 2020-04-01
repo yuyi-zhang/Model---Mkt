@@ -14,3 +14,5 @@ Welcome to MS6221!
 5 Class5.
 
 6.1 Class 6a.
+
+6.2 Class 6b
