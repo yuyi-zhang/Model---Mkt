@@ -1,0 +1,104 @@
+#import packages#
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import random 
+import itertools
+
+N_true_inputs=2 #Number of true inputs
+N_false_inputs=8 #Number of false inputs
+n_obs=100 #Nubmer of observations:Estimation
+n_pred=100 #Nubmer of observations:Prediction
+error_sd=0.5 #Standar deviation of the error term
+
+# Total number of inputs (simply set intercept = 0)
+p = N_true_inputs + N_false_inputs
+
+# Total number of observations
+n = n_obs + n_pred
+
+#Parameter vector:
+#True inputs have coefficient 1
+#False inputs have a zero (or very small) coefficient ###########bug is corrected 
+beta = np.asmatrix(np.zeros((p,1)))
+beta[0:N_true_inputs,:] = 1
+
+#Simulate the data: Note that X is a matrix, not a data frame
+np.random.seed(1)
+X = np.asmatrix(np.random.rand(n,p))
+epsilon = np.asmatrix(error_sd*np.random.normal(0,size=(n,1))) 
+y = X*beta + epsilon
+X = pd.DataFrame(X) 
+y = pd.DataFrame(y)
+
+# Pack the data into a dataframe
+DF = pd.concat([pd.DataFrame(X),pd.DataFrame(y)],axis=1) 
+new_names_true = ['x_true_'+str(i) for i in range(1,N_true_inputs+1)] 
+new_names_false = ['x_false_'+str(i) for i in range(1,N_false_inputs+1)] 
+names = new_names_true + new_names_false + ['y']
+DF.columns = names
+ 
+# Randomly draw n_obs observations
+train_index = random.sample(range(0,n),100)
+train_index.sort()
+
+DF_estimation = DF.loc[train_index,:] 
+DF_prediction = DF.drop(index=train_index)
+
+#get the estimation and prediction data
+X_est,y_est = DF_estimation.iloc[:,0:p],DF_estimation['y'] 
+X_pred,y_pred = DF_prediction.iloc[:,0:p],DF_prediction['y']
+
+# Fit model on feature_set and calculate rsq_adj
+def processSubset(X,y,feature_set):
+    regr = sm.OLS(y,X[list(feature_set)]).fit() 
+    rsq_adj = regr.rsquared_adj
+    return {"model":regr, "rsq_adj":rsq_adj}
+
+# Pull out predictors we still need to process 
+def forward(predictors,X,y):
+    remaining_predictors = [p for p in X.columns if p not in predictors]
+    results = []
+    for p in remaining_predictors:
+        results.append(processSubset(X,y,predictors+[p]))
+        # Wrap everything up in a nice dataframe
+    models = pd.DataFrame(results)
+    # Choose the model with the highest rsq_adj
+    best_model = models.loc[models['rsq_adj'].idxmax()]
+    # Return the best model, along with models other information return best_model
+    
+models_fwd = pd.DataFrame(columns=["rsq_adj", "model"]) 
+predictors = []
+
+for i in range(1,len(X_est.columns)+1): 
+    models_fwd.loc[i] = forward(predictors,X_est,y_est)
+    print(models_fwd.loc[i])
+    #predictors = models_fwd.loc[i]['model'].model.exog_names ######这个我解决不了 
+   # print(predictors)
+ 
+ 
+   
+   
+    
+    
+    
+    
+    
+
+    
+    
+ 
+    
+
+    
+
+ 
+ 
+ 
+
+    
+    
+    
+    
+    
