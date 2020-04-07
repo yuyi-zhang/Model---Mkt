@@ -20,3 +20,5 @@ Welcome to MS6221!
 7 Class 7.
 
 8.1 Class 8a.
+
+8.2 Class 8b.
