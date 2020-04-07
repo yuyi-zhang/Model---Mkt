@@ -1,0 +1,63 @@
+#import the necessary packages#
+import pandas as pd
+import numpy as np
+from numpy import *
+import random
+import statsmodels.api as sm
+
+
+#time series regression#
+#simuation time series data#
+N, T, K= 100,200,10
+sigma = 1
+# a fixed alpha for the store/market
+alpha_i = np.random.normal(0,size=N)
+# a fixed beta for the store/market
+np.random.seed(3)
+M=120
+beta_i = matrix(np.random.normal(0,size=(N,K)))
+Y = np.zeros((N,T))
+X = np.random.randn(N,T,K)
+for t in range(0,T):
+    for n in range(0,N):
+        Y[n][t] = alpha_i[n] + beta_i[n]*X[n][t].reshape(K,1) + np.random.normal(M)
+# cross-sectional average R-squared (N models)
+Y_t = pd.DataFrame(Y.T)
+#calculate correlation between columns
+cov = Y_t.cov()
+R_2 = np.mean(1-1/diag(cov))
+print(R_2)
+
+#simulation cross sectional data
+N, T, K= 100,200,10
+sigma = 1
+# a fixed alpha for the store/market
+alpha_t = np.random.normal(0,size=T)
+# a fixed beta for the store/market
+np.random.seed(3)
+M=120
+beta_t = matrix(np.random.normal(0,size=(T,K)))
+Y = np.zeros((N,T))
+X = np.random.randn(N,T,K)
+for t in range(0,T):
+    for n in range(0,N):
+        Y[n][t] = alpha_i[n] + beta_i[n]*X[n][t].reshape(K,1) + np.random.normal(M)
+# cross-sectional average R-squared (N models)
+Y_t = pd.DataFrame(Y.T)
+#calculate correlation between columns
+cov = Y_t.cov()
+R_2 = np.mean(1-1/diag(cov))
+print(R_2)
+
+
+#pooled regression#
+# use Y[100x200] and X[100x200x10] simulated
+import statsmodels.api as sm
+# use Y[100x200] and X[100x200x10] simulated
+Y_pool = np.array(Y).reshape(N*T,1)
+X_pool = []
+for i in range(0,K):
+    X_pool.append(X[:,:,i].reshape(N*T))
+X_pool = pd.DataFrame(X_pool).T
+model_pool = sm.OLS(Y_pool,X_pool).fit()
+print(model_pool.rsquared)
