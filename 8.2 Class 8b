@@ -1,0 +1,39 @@
+#insert the necessary packages#
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+
+#read the data#
+Detergent_DF = pd.read_csv('/Users/zhangyunyi/Modeling in CityU/MS6221/8/Detergent.csv')
+Detergent_DF.head(3)
+
+#is teh tide 128 price elasticity as expected#
+Detergent_DF['vel_tide128'] = Detergent_DF['q_tide128']/Detergent_DF['acv']
+x = pd.concat([np.log(Detergent_DF['p_tide128']),np.log(Detergent_DF['p_tide64']),np.log(Detergent_DF['p_wisk64'])],axis=1)
+x = sm.add_constant(x)
+model = sm.OLS(np.log(Detergent_DF['vel_tide128']),x).fit()
+#print(model.summary())
+
+#now we might notice that the elasticity is strange,so we add the time trend#
+
+#add a variable correlated with time to the regression model#
+#adding a time trend#
+x1 = pd.concat([np.log(Detergent_DF['p_tide128']),np.log(Detergent_DF['p_tide64']),np.log(Detergent_DF['p_wisk64']),Detergent_DF['week']],axis=1)
+x1 = sm.add_constant(x1)
+model_1 = sm.OLS(np.log(Detergent_DF['vel_tide128']),x1).fit()
+#model_1.summary()
+
+
+#base price elasticity#
+Detergent_DF2 = Detergent_DF.loc[Detergent_DF['promoflag'] == 0]
+x2 = pd.concat([np.log(Detergent_DF2['p_tide128']),np.log(Detergent_DF2['p_tide64']),np.log(Detergent_DF2['p_wisk64']),Detergent_DF2['week']],axis=1)
+x2 = sm.add_constant(x2)
+model_2 = sm.OLS(np.log(Detergent_DF2['vel_tide128']),x2).fit()
+#model_2.summary()
+
+#store fixed effects#
+store = pd.get_dummies(Detergent_DF2['store']) 
+print(store.shape[1])
+x3 = pd.concat([x2,store],axis=1)
+model_3 = sm.OLS(np.log(Detergent_DF2['vel_tide128']),x3).fit()
+#model_3.summary() 
