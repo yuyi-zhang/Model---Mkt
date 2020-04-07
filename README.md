@@ -15,4 +15,6 @@ Welcome to MS6221!
 
 6.1 Class 6a.
 
-6.2 Class 6b
+6.2 Class 6b.
+
+7 Class 7.
