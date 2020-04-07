@@ -1,0 +1,40 @@
+
+# coding: utf-8
+
+# In[ ]:
+
+
+import pandas as pd
+import numpy as np
+
+def createBins(x,N):
+    cut = [i/N for i in range(1,N)]
+    df = pd.DataFrame(x)
+    cut_points = df.quantile(cut).T.values
+    cut_points = np.unique(cut_points)
+    cut_points = np.insert(cut_points,0,values=float('-inf'))
+    cut_points = np.append(cut_points,values=float('inf'))
+    #labels = ["{0} - {1}".format(round(cut_points[i],2),round(cut_points[i+1],2)) for i in range(0,N)]
+    labels = ['{0}'.format(i) for i in range(1,len(cut_points))]
+    bins = pd.cut(x, cut_points, labels=labels)
+    bins = pd.DataFrame(bins).astype(int)
+    return bins
+
+DF = pd.read_csv('./tuscan_DF.csv')
+DF['f_index'] = createBins(DF['numords'],5)
+DF['f_index'] = 6 - DF['f_index']
+DF['r_index'] = createBins(DF['last'],5)
+DF['m_index'] = 6 - createBins(DF['totdol'],5)
+
+table = DF.groupby('r_index').mean()['buyer']
+print(table)
+
+
+DF['f_index'] = 1
+DF.loc[(DF['numords']>=6) & (DF['numords']<12),'f_index'] = 2 
+DF.loc[(DF['numords']>=3) & (DF['numords']<6),'f_index'] = 3
+DF.loc[(DF['numords']==2),'f_index'] = 4
+DF.loc[(DF['numords']==1),'f_index'] = 5
+
+DF.groupby('rfm_index')['buyer'].agg([len,np.sum])
+
