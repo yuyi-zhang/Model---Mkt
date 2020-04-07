@@ -151,3 +151,65 @@ print(ridge.coef_)
  
  
  
+#the lasso#
+from sklearn.linear_model import Lasso 
+from sklearn.linear_model import LassoCV 
+l_coefs = []
+for a in alphas:
+    lasso = linear_model.Lasso(alpha=a, fit_intercept=False) 
+    lasso.fit(X, y)
+    l_coefs.append(lasso.coef_)
+
+
+    
+#e未必能被识别，可以用近似值来替代或者怎样#
+ax = plt.gca()
+ax.semilogx(alphas,l_coefs,basex=2.7) 
+ax.set_xticklabels([-6,-5,-4,-3,-2,-1,0,1,2]) 
+ax.set_xlim(ax.get_xlim()[::-1])
+plt.ylabel('weights')
+plt.title('Lasso coefficients as a function of the regularization') 
+plt.axis('tight')
+plt.show()
+
+#get the estimation and prediction data
+X_est,y_est = DF_estimation.iloc[:,0:p],DF_estimation['y'] 
+X_pred,y_pred = DF_prediction.iloc[:,0:p],DF_prediction['y']
+lasso_cv = LassoCV(alphas=alphas,cv=2).fit(X_est,y_est) 
+alphas_ = lasso_cv.alphas_
+mse_mean = np.mean(lasso_cv.mse_path_,axis=1)
+mse_std = np.std(lasso_cv.mse_path_)
+ 
+plt.figure().set_size_inches(8, 6) 
+plt.semilogx(alphas_,mse_mean)
+
+ax = plt.gca() 
+ax.semilogx(alphas,l_coefs,basex=2.7) 
+ax.set_xticklabels([-6,-5,-4,-3,-2,-1,0,1,2]) 
+ax.set_xlim(ax.get_xlim()[::-1]) # reverse axis
+plt.figure().set_size_inches(8, 6)
+plt.semilogx(alphas_,mse_mean)
+
+# plot error lines showing +/- std. errors of the mse
+std_error = mse_std / np.sqrt(1)#这个地方取代了之前的k，请自行定义#
+plt.semilogx(alphas_, mse_mean + std_error, 'b--') 
+plt.semilogx(alphas_, mse_mean - std_error, 'b--')
+# alpha=0.2 controls the translucency of the fill color
+plt.fill_between(alphas_,mse_mean+std_error,mse_mean-std_error,alpha=0.2)
+plt.ylabel('CV mse +/- std error') 
+plt.xlabel('alphas_') 
+plt.axhline(np.min(mse_mean), ls='--', color='.5') 
+plt.show()
+
+lambda_min = lasso_cv.alpha_ 
+print("lambda_min:", lambda_min)
+
+lasso_cv_pred = lasso_cv.predict(DF_prediction.iloc[:,0:p]) 
+print(np.mean((lasso_cv_pred-DF_prediction['y'])**2))
+
+l = linear_model.Lasso(alpha=lambda_min, fit_intercept=True) 
+lasso = l.fit(DF_estimation.iloc[:,0:p],DF_estimation['y']) 
+lasso_pred = lasso.predict(DF_prediction.iloc[:,0:p]) 
+print(lasso.coef_)
+ 
+ 
