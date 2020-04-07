@@ -100,3 +100,54 @@ while len(predictors)>1:
     predictors = models_bwd.loc[len(predictors)-1]["model"].model.exog_names
     print(predictors)
 print(models_bwd.loc[4, "model"].summary())   
+
+
+
+#ridge regression#
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import scale 
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Ridge, RidgeCV, Lasso, LassoCV
+from sklearn.metrics import mean_squared_error
+from sklearn import linear_model
+
+
+
+alphas = [np.exp(i/10) for i in range(-150,50,2)] 
+coefs = []
+for a in alphas:
+    ridge = linear_model.Ridge(alpha=a, fit_intercept=False) 
+    ridge.fit(DF_estimation.iloc[:,0:p],DF_estimation['y']) 
+    ridge.coef_ = np.insert(ridge.coef_,0,ridge.intercept_) 
+    coefs.append(ridge.coef_)
+dim_coef = np.array(coefs).shape 
+print(dim_coef)
+ 
+plt.subplot(1, 2, 1) 
+plt.scatter(range(0,dim_coef[1]),coefs[0]) 
+plt.axhline(y=0, c="g", ls="-", lw=2) 
+plt.title('least_regularized')
+plt.subplot(1, 2, 2) 
+plt.scatter(range(0,dim_coef[1]),coefs[100-1],c='slategrey') 
+plt.axhline(y=0, c='coral', ls="-", lw=2) 
+plt.title('most_regularized')
+plt.show()
+ 
+#这个地方修正过了#
+from sklearn.linear_model import RidgeCV
+ridge_cv = RidgeCV(alphas=alphas,store_cv_values=True)
+ridge_cv.fit(DF_estimation.iloc[:,0:p],DF_estimation['y']) 
+lambda_min = ridge_cv.alpha_
+
+ridge_cv_pred = ridge_cv.predict(DF_prediction.iloc[:,0:p]) 
+print(np.mean((ridge_cv_pred-DF_prediction['y'])**2))
+
+r = linear_model.Ridge(alpha=lambda_min, fit_intercept=False) 
+ridge = r.fit(DF_estimation.iloc[:,0:p],DF_estimation['y']) 
+ridge_pred = ridge.predict(DF_prediction.iloc[:,0:p]) 
+print(ridge.coef_)
+ 
+ 
+ 
