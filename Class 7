@@ -1,0 +1,330 @@
+
+# coding: utf-8
+
+# In[2]:
+
+
+import pandas as pd
+import numpy as np
+from numpy import *
+import random
+import statsmodels.api as sm
+
+
+np.random.seed(100)
+N = 150 # num of observations 
+K = 5 # num of unobservable true predictors 
+P = 50 # num of observed predictors
+
+Z = matrix(np.random.normal(0,size=(N,K)))
+v = []
+for i in range(1,P+1):
+    v.append(1/i)
+gamma = matrix(np.random.rand(K,P))*matrix(diag(v))
+X = Z*gamma + matrix(np.random.normal(0,size=(N,P)))
+beta = matrix(np.ones((K,1)))
+Y = Z*beta + np.random.normal(0,size=(N,1))
+
+mydata = pd.concat([pd.DataFrame(X),pd.DataFrame(Y)],axis=1)
+names = ['x_'+str(i) for i in range(1,P+1)]
+names.append('y')
+mydata.columns = names
+train_data = mydata.loc[0:99]
+test_data = mydata.loc[100:150]
+
+
+# In[3]:
+
+
+train_x = sm.add_constant(train_data.drop(['y'],axis=1,inplace=False))
+model1 = sm.OLS(train_data['y'],train_x).fit()
+#in-sample MSE
+mse = np.mean((train_data['y']-model1.fittedvalues)**2)
+print(mse)
+#out-sample MSE
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mse_test = np.mean((model1.predict(test_x)-test_data['y'])**2)
+print(mse_test)
+
+
+# In[4]:
+
+
+import matplotlib.pyplot as plt
+params = model1.params.drop(['const'])
+plt.plot(range(0,P),params)
+plt.plot(range(0,P),np.array(beta.T*gamma)[0])
+plt.axhline(y=0, c="g", ls="-", lw=2)
+plt.show()
+
+
+# In[5]:
+
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale 
+x = train_x.drop(['const'],axis=1,inplace=False)
+pca = PCA().fit(x)
+var = pca.explained_variance_[0:11]
+
+plt.bar(x=range(0,11),height = var)
+
+
+# In[6]:
+
+
+import seaborn as sns
+#set the number of components
+k = 10
+x_range = np.array(range(0,k+1))
+sns.set(style="white")
+sns.barplot(x=x_range,y=var,palette="Blues_d")
+
+
+# In[7]:
+
+
+k = 50
+var = pca.explained_variance_[0:k+1]
+plt.scatter(range(0,k),var,marker='o',c='',edgecolors='b')
+
+
+# In[8]:
+
+
+com = pca.components_[0:2,:]
+com = np.transpose(com)
+x_new = PCA().fit_transform(x)
+print(x_new)
+
+
+# In[42]:
+
+
+def biplot(transform,coeff,n,labels=None):
+    xs = transform[:,0]
+    ys = transform[:,1]
+    #n = coeff.shape[0]
+    scalex = 1.0/(xs.max() - xs.min())
+    scaley = 1.0/(ys.max() - ys.min())
+    plt.scatter(xs * scalex,ys * scaley,c='lightblue',marker='.')
+    for i in range(0,n):
+        plt.arrow(0, 0, coeff[i,0], coeff[i,1],color = 'royalblue',alpha = 1,linewidth=1.5)
+        if labels is None:
+            plt.text(coeff[i,0]* 1.15, coeff[i,1] * 1.15, "Var"+str(i+1), color = 'royalblue', ha = 'center', va = 'center')
+        else:
+            plt.text(coeff[i,0]* 1.15, coeff[i,1] * 1.15, labels[i], color = 'royalblue', ha = 'center', va = 'center')
+
+
+#Call the function. Use only the 2 PCs.
+biplot(x_new[:,0:2],np.transpose(pca.components_[0:2, :]),2)
+plt.xlim(-1,1)
+plt.ylim(-1,1)
+plt.xlabel("PC{}".format(1))
+plt.ylabel("PC{}".format(2))
+plt.show()
+
+
+# In[43]:
+
+
+from sklearn.linear_model import LinearRegression
+num_component = 1
+pca = PCA(n_components=num_component)
+x_train = train_data.drop(['y'],axis=1,inplace=False)
+x_train_reduced = pca.fit_transform(x_train)
+x_test = test_data.drop(['y'],axis=1,inplace=False)
+x_test_reduced = pca.transform(x_test)
+# ols
+regr = LinearRegression()
+regr.fit(x_train_reduced, train_data['y'])
+y_pred = regr.predict(x_test_reduced)
+
+mse = np.mean((y_pred-test_data['y'])**2)
+print(mse)
+
+
+# In[44]:
+
+
+num_component = 2
+pca = PCA(n_components=num_component)
+x_train = train_data.drop(['y'],axis=1,inplace=False)
+x_train_reduced = pca.fit_transform(x_train)
+x_test = test_data.drop(['y'],axis=1,inplace=False)
+x_test_reduced = pca.transform(x_test)
+# ols
+regr = LinearRegression()
+regr.fit(x_train_reduced, train_data['y'])
+y_pred = regr.predict(x_test_reduced)
+
+mse = np.mean((y_pred-test_data['y'])**2)
+print(mse)
+
+
+num_component = 5
+pca = PCA(n_components=num_component)
+x_train = train_data.drop(['y'],axis=1,inplace=False)
+x_train_reduced = pca.fit_transform(x_train)
+x_test = test_data.drop(['y'],axis=1,inplace=False)
+x_test_reduced = pca.transform(x_test)
+# ols
+regr = LinearRegression()
+regr.fit(x_train_reduced, train_data['y'])
+y_pred = regr.predict(x_test_reduced)
+
+mse = np.mean((y_pred-test_data['y'])**2)
+print(mse)
+
+num_component = 20
+pca = PCA(n_components=num_component)
+x_train = train_data.drop(['y'],axis=1,inplace=False)
+x_train_reduced = pca.fit_transform(x_train)
+x_test = test_data.drop(['y'],axis=1,inplace=False)
+x_test_reduced = pca.transform(x_test)
+# ols
+regr = LinearRegression()
+regr.fit(x_train_reduced, train_data['y'])
+y_pred = regr.predict(x_test_reduced)
+
+mse = np.mean((y_pred-test_data['y'])**2)
+print(mse)
+
+
+# In[45]:
+
+
+from sklearn.cross_decomposition import PLSRegression, PLSSVD
+from sklearn.metrics import mean_squared_error
+pls = PLSRegression()
+model2 = pls.fit(scale(train_x), train_data['y'])
+
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mean_squared_error(test_data['y'], model2.predict(scale(test_x)))
+
+
+# In[46]:
+
+
+pls = PLSRegression(n_components=1)
+model2 = pls.fit(scale(train_x), train_data['y'])
+
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mean_squared_error(test_data['y'], model2.predict(scale(test_x)))
+
+
+# In[47]:
+
+
+pls = PLSRegression(n_components=2)
+model2 = pls.fit(scale(train_x), train_data['y'])
+
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mean_squared_error(test_data['y'], model2.predict(scale(test_x)))
+
+
+# In[48]:
+
+
+pls = PLSRegression(n_components=5)
+model2 = pls.fit(scale(train_x), train_data['y'])
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mean_squared_error(test_data['y'], model2.predict(scale(test_x)))
+
+
+# In[49]:
+
+
+pls = PLSRegression(n_components=20)
+model2 = pls.fit(scale(train_x), train_data['y'])
+
+test_x = sm.add_constant(test_data.drop(['y'],axis=1,inplace=False))
+mean_squared_error(test_data['y'], model2.predict(scale(test_x)))
+
+
+# In[50]:
+
+
+brand_ratings = pd.read_csv('/Users/Hmxay/Desktop/RA/R_P/class5/brand_ratings.csv')
+print(brand_ratings.head(5))
+std = np.std(brand_ratings,axis=0)
+print(std)
+brand_scale = scale(brand_ratings.drop(['brand'],axis=1))
+std_scale = np.std(brand_scale,axis=0)
+print(std_scale)
+
+
+# In[51]:
+
+
+corr = pd.DataFrame(brand_scale).corr()
+x_names = np.array(brand_ratings.columns)[0:-1]
+corr.columns,corr.index = x_names,x_names
+sns.heatmap(corr,cmap=sns.diverging_palette(220, 10, as_cmap=True),xticklabels= True, yticklabels= True)
+
+
+# In[52]:
+
+
+brand_sc = pd.concat([pd.DataFrame(brand_scale),brand_ratings['brand']],axis=1)
+brand_sc.columns = brand_ratings.columns
+#calculate the mean based on different types of brand
+brand_mean = brand_sc.groupby("brand").mean()
+print(brand_mean.iloc[:,0:4])
+
+
+# In[53]:
+
+
+brand_pca = PCA().fit(brand_scale)
+#variance explained by each of the selected components.
+print('variance:',brand_pca.explained_variance_)
+#Percentage of variance explained by each of the selected components.
+print('Percentage of variance:',brand_pca.explained_variance_ratio_)
+cum = np.cumsum(brand_pca.explained_variance_ratio_)
+print('Cumulative Proportion of variance:',cum)
+
+
+# In[54]:
+
+
+brand_trans = PCA().fit_transform(brand_scale)
+comp = brand_pca.components_
+biplot(brand_trans,comp,comp.shape[0],labels=brand_ratings.columns)
+
+
+# In[57]:
+
+
+brand = pd.DataFrame(brand_mean).T
+brand_pca = PCA().fit(scale(brand))
+print('variance:',brand_pca.explained_variance_)
+#Percentage of variance explained by each of the selected components.
+print('Percentage of variance:',brand_pca.explained_variance_ratio_)
+cum = np.cumsum(brand_pca.explained_variance_ratio_)
+print('Cumulative Proportion of variance:',cum)
+
+
+# In[58]:
+
+
+brand_trans = PCA().fit_transform(brand_mean)
+comp = brand_pca.components_
+biplot(brand_trans,comp,comp.shape[0],labels=brand_ratings.columns)
+
+
+# In[352]:
+
+
+c_e = brand_mean.loc['c']-brand_mean.loc['e']
+print(pd.DataFrame(c_e).T)
+
+
+# In[359]:
+
+
+col = brand_mean.loc[['b','c','f','g']]-brand_mean.loc['e']
+colmean = np.mean(col,axis=0)
+print(pd.DataFrame(colmean).T)
+
+
