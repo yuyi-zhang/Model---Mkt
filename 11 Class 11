@@ -1,0 +1,35 @@
+
+#split into estimation / training and validation data#
+#import the necessary packages#
+import numpy as np
+import pandas as pd
+import random
+from collections import Counter
+import statsmodels.api as sm
+
+#read the data set#
+catalog_DF = pd.read_csv('catalog-Data.csv',index_col=0)
+
+#simulate the data#
+np.random.seed(90210)
+validation_sample = np.random.binomial(1,0.4,catalog_DF.shape[0])
+print(Counter(validation_sample))
+
+catalog_DF['validation_sample']=validation_sample
+catalog_DF['validation_sample'].describe()
+
+#split the data#
+training_DF = catalog_DF[catalog_DF['validation_sample']==0]
+y_train=training_DF ['buytabw']
+x_train = training_DF.drop(['buytabw','validation_sample','customer_no'],axis=1, inplace=False)
+
+#estimate model using estimation model not the validation model#
+x_train = sm.add_constant(x_train)
+glm = sm.GLM(y_train,x_train,family= sm.families.Binomial()).fit()
+glm.summary()
+val_DF=catalog_DF.drop(['buytabw','validation_sample','customer_no'],axis=1, inplace=False)
+val_DF= sm.add_constant(val_DF)
+catalog_DF['Pr']=glm.predict(val_DF)
+
+#drop the observations belonging to the estimation sample#
+catalog_DF=catalog_DF[catalog_DF['validation_sample']==1]
