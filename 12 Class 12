@@ -1,0 +1,120 @@
+
+# coding: utf-8
+
+# In[35]:
+
+
+import pandas as pd
+import numpy as np
+from scipy import stats
+
+star_DF = pd.read_csv('/Users/Hmxay/Desktop/RA/R_P/digital/CaseStudy/Star-Digital.csv')
+star_DF = star_DF.rename(columns={'test':'treatment'})
+# Sum columns ?? number of impressions across all six websites
+star_DF['total_imp'] = np.sum([star_DF['imp_1'],star_DF['imp_2'],
+                              star_DF['imp_3'],star_DF['imp_4'],
+                              star_DF['imp_5'],star_DF['imp_6']],axis=0)
+
+# Mean number of impressions across groups
+print(star_DF.groupby('treatment')['total_imp'].agg(np.mean))
+# T-test for equality of means
+Treatment_group = star_DF[star_DF['treatment']==1]
+Control_group = star_DF[star_DF['treatment']==0]
+#stats.ttest_ind(star_DF['treatment'],star_DF['total_imp'],equal_var = False)
+stats.ttest_ind(Treatment_group['total_imp'],Control_group['total_imp'])
+
+
+# In[38]:
+
+
+import statsmodels.api as sm
+x,y = star_DF['treatment'],star_DF['purchase']
+x = sm.add_constant(x)
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())
+
+
+# In[39]:
+
+
+x,y = star_DF['total_imp'],star_DF['purchase']
+x = sm.add_constant(x)
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())
+
+
+# In[40]:
+
+
+x,y = Control_group['total_imp'],Control_group['purchase']
+x = sm.add_constant(x)
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())
+
+
+# In[41]:
+
+
+x,y = Treatment_group['total_imp'],Treatment_group['purchase']
+x = sm.add_constant(x)
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())
+
+
+# In[54]:
+
+
+star_DF['total_treatment'] =star_DF.apply(lambda x: x['total_imp']* x['treatment'], axis=1)
+y = star_DF['purchase']
+x = pd.concat([star_DF['total_imp'],star_DF['total_treatment']],axis=1)
+x = sm.add_constant(x)
+print(x.shape,y.shape)
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())
+
+
+# In[89]:
+
+
+# Sum columns number of impressions across websites 1-5
+star_DF['total_imp_15'] = np.sum([star_DF['imp_1'],star_DF['imp_2'],
+                                  star_DF['imp_3'],star_DF['imp_4'],
+                                  star_DF['imp_5']],axis=0)                        
+star_DF['treat_imp_15'] =star_DF.apply(lambda x: x['treatment']* x['total_imp_15'], axis=1)
+star_DF['treat_imp_6'] =star_DF.apply(lambda x: x['treatment']* x['imp_6'], axis=1)                             
+x = pd.concat([star_DF['total_imp_15'],star_DF['imp_6'],
+               star_DF['treat_imp_15'],star_DF['treat_imp_6']],axis=1)
+x = sm.add_constant(x)
+y = star_DF['purchase']
+glm = sm.GLM(y,x,family=sm.families.Binomial()).fit()
+print(glm.summary())                            
+
+
+# In[110]:
+
+
+from decimal import Decimal
+
+#Conversion rate in estimation sample
+alpha_s = np.mean(star_DF['purchase'])
+#Conversion rate in original data
+alpha_d = 71677/45578739
+#Create offset variable
+star_DF['offset_var'] = (Decimal(alpha_s)/Decimal(1-alpha_s)).ln() - (Decimal(alpha_d)/Decimal(1-alpha_d)).ln()
+star_DF['offset_var'] = star_DF['offset_var'].astype(float)
+#Estimation model including offset
+x = pd.concat([star_DF['total_imp_15'],star_DF['imp_6'],
+               star_DF['treat_imp_15'],star_DF['treat_imp_6']],
+               axis=1)
+x = sm.add_constant(x)
+y = star_DF['purchase']
+fit_o = sm.GLM(y,x,family=sm.families.Binomial(),
+               offset=star_DF['offset_var']).fit()
+print(fit_o.summary())
+#Predict conversion rates
+Pr = fit_o.predict(x)
+#Marginal effects using marginal
+estimates = fit_o.params
+marginal_effect_15 = np.mean(estimates[3]*Pr*(1-Pr))
+marginal_effect_6 = np.mean(estimates[4]*Pr*(1-Pr))
+
